@@ -5,6 +5,8 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 import time
 
@@ -55,16 +57,29 @@ time.sleep(2)
 # Selecionar a primeira opção do select "qualificacaoProponente"
 qualificacao_select = Select(driver.find_element(By.ID, "consultarQualificacaoProponente"))
 qualificacao_select.select_by_index(1)  # índice 0 é a opção vazia, 1 é "Proposta Voluntária"
+time.sleep(1)
+
+# Selecionar a opção "Sim" no campo "Apto"
+apto_select = Select(driver.find_element(By.ID,"consultarApto"))
+apto_select.select_by_visible_text("Sim")
+time.sleep(1)
+
 
 # Preenche o campo "Ano do Programa"
 ano_input = driver.find_element(By.ID, "consultarAnoPrograma")
 ano_input.clear()
 ano_input.send_keys("2025")
-
+time.sleep(1)
 # Preenche o campo "Descrição"
 descricao_textarea = driver.find_element(By.ID, "consultarDescricao")
 descricao_textarea.clear()
-descricao_textarea.send_keys("lgbtqia+")
+descricao_textarea.send_keys("Educação")
+time.sleep(1)
+
+# Selecionar a opção "Disponibilizado" no campo "Estado"
+estado_select = Select(driver.find_element(By.ID, "consultarEstado"))
+estado_select.select_by_value("DISPONIBILIZADO")  # ou .select_by_visible_text("Disponibilizado")
+time.sleep(1)
 
 # Selecionar a opção "Termo de Fomento" no select "modalidade"
 modalidade_select = Select(driver.find_element(By.ID, "consultarModalidade"))
@@ -96,16 +111,38 @@ for checkbox in checkboxes_estados:
         checkbox.click()
 
 
-# Clica no botão "Consultar"
-consultar_btn = driver.find_element(By.ID, "form_submit")
-consultar_btn.click()
+time.sleep(2)
+# Executa o JavaScript do botão "Consultar"
+driver.execute_script("setaAcao('/ConsultarPrograma/PreenchaOsDadosDaConsultaDeProgramaDeConvenioConsultar', 'validatePreenchaOsDadosDaConsultaDeProgramaDeConvenioConsultarForm', true , 'consultarProgramaPreenchaOsDadosDaConsultaDeProgramaDeConvenioConsultarForm')")
+time.sleep(3)
+print("URL final:", driver.current_url)
 
 
 time.sleep(3)
 
 
+# Troca para a última aba
 abas = driver.window_handles
-driver.switch_to.window([-1])
+driver.switch_to.window(abas[-1])
+time.sleep(2)
 
-#time.sleep(10)
-#driver.quit()
+wait = WebDriverWait(driver, 10)
+
+# Aguarda o link do PDF ficar clicável
+pdf_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[span[@class='export pdf']]")))
+
+# Tenta clicar normalmente
+try:
+    pdf_link.click()
+    print("Clique normal no link PDF realizado.")
+except:
+    print("Clique normal falhou, tentando via JavaScript...")
+    try:
+        driver.execute_script("arguments[0].click();", pdf_link)
+        print("Clique via JavaScript realizado.")
+    except:
+        print("Clique via JS também falhou, tentando abrir o href diretamente...")
+        href = pdf_link.get_attribute("href")
+        driver.get(href)
+
+time.sleep(5)  # aguarda para garantir que o download comece
